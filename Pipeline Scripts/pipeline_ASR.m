@@ -34,8 +34,12 @@ else
         'workingDir', 'dataDir','locFile','locFilePath');
 end
 
-name = input('Please specify name to attach to files: ','s');
-fileDir = strcat(dataDir,filesep,name);
+if idx == 1
+    name = input('Please specify name to attach to files: ','s');
+else
+    name = input('Please specify name associated files: ','s');
+end
+fileDir = strcat(dataDir,filesep,mfilename,filesep,name);
 
 if ~exist(fileDir,'dir')
     mkdir(fileDir)
@@ -154,7 +158,13 @@ end
 EEG = pop_epoch(EEG, unique({EEG.event(:).type}), [-1 2], 'newname', strcat(name,'_epochs'), ...
 'epochinfo', 'yes');
 
-EEG.comments = pop_comments(EEG.comments,'','Epoched from -1 to 2',1);
+EEG.comments = pop_comments(EEG.comments,'','Epoched from -1000 to 2000 ms',1);
+
+rmBase = questdlg('Would you like to remove baseline?');
+if strcmp(rmBase,'Yes')
+    EEG = pop_rmbase(EEG,[-1000,0]);
+    EEG.comments = pop_comments(EEG.comments,'','Removed baseline from -1000 to 0 ms',1);
+end
 
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_epochs'),...
     'savenew',strcat(fileDir,filesep,name,'_epochs'),'overwrite','on','gui','off'); 

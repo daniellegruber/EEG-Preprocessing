@@ -1,6 +1,5 @@
 steps = {'Raw data load','Filter','Epoch','Reject bad channels','Interpolate',...
-    'Average reference','ICA for epoch rejection','Reject epochs',...
-    'ICA for comp rejection','Reject components'};
+    'Average reference','Reject epochs','ICA','Reject components'};
 [idx,~] = listdlg('PromptString','Select step to start at',...
     'ListString',steps,'SelectionMode','single');
 
@@ -35,7 +34,11 @@ else
         'workingDir', 'dataDir','locFile','locFilePath');
 end
 
-name = input('Please specify name to attach to files: ','s');
+if idx == 1
+    name = input('Please specify name to attach to files: ','s');
+else
+    name = input('Please specify name associated files: ','s');
+end
 fileDir = strcat(dataDir,filesep,mfilename,filesep,name);
 
 if ~exist(fileDir,'dir')
@@ -269,15 +272,15 @@ end
 % EEG.etc.amica.S = EEG.etc.amica.S(1:EEG.etc.amica.num_pcs, :); % Weirdly, I saw size(S,1) be larger than rank. This process does not hurt anyway.
 % EEG.icaweights = EEG.etc.amica.W;
 % EEG.icasphere  = EEG.etc.amica.S;
-EEG = pop_runica(EEG, 'icatype', 'runica', 'extended',1,'interrupt','on','pca',numChannelsBeforeInterp);
+EEG = pop_runica(EEG, 'icatype', 'runica', 'extended',1,'interrupt','on','pca',numChannelsBeforeInterp-1);
 EEG.comments = pop_comments(EEG.comments,'','Performed ICA for bad component rejection',1);
 EEG = eeg_checkset(EEG, 'ica');
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_ica'),...
     'savenew',strcat(fileDir,filesep,name,'_ica'),'overwrite','on','gui','off'); 
 end
 %% Reject components by map
-if idx <= 10
-if idx == 10
+if idx <= 9
+if idx == 9
 EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_ica.set'));
 end
 EEG = pop_selectcomps(EEG, [1:size(EEG.icaweights,1)]);
