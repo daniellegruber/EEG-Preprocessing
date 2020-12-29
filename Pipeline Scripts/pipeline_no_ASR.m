@@ -1,9 +1,12 @@
-steps = {'Raw data load','Filter','Epoch','Reject bad channels','Interpolate',...
+%% Step 0: Initiate script and working environment
+
+% Choose step to begin processing at
+steps = {'Load EEG data','Apply filters','Epoch data','Reject bad channels','Interpolate',...
     'Average reference','Reject epochs','ICA','Reject components'};
 [idx,~] = listdlg('PromptString','Select step to start at',...
     'ListString',steps,'SelectionMode','single');
 
-%% Load directories
+% Load directories
 previousOpts = questdlg('Would you like to use the directories from your previous run?');
 if strcmp(previousOpts,'Yes')
     load(['opts_',mfilename,'.mat'],'eeglabDir','workingDir',...
@@ -48,19 +51,21 @@ end
 pop_editoptions('option_single', 0);
 
 close all
-%% Load EEG data file
+%% Step 1: Load EEG data
 if idx == 1
 disp('Please specify .set file from which you want to load data.')
 [dataFile,dataFilePath] = uigetfile('*.set','Select EEG data file.');
 EEG = pop_loadset('filename',strcat(dataFilePath,filesep,dataFile));
 
 EEG.pipeline = mfilename;
-%% Resample to 512 Hz
+
+% Resample to 512 Hz
 EEG = pop_resample(EEG, 512);
 EEG = eeg_checkset(EEG);
 
 EEG.comments = pop_comments(EEG.comments,'','Resampled to 512 Hz',1);
-%% Load channel locations
+
+% Load channel locations
 EEG=pop_chanedit(EEG, 'load',strcat(locFilePath,locFile));
 
 EEG.comments = pop_comments(EEG.comments,'','Channel locations loaded',1);
@@ -68,7 +73,8 @@ EEG.comments = pop_comments(EEG.comments,'','Channel locations loaded',1);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',name,...
     'savenew',strcat(fileDir,filesep,name),'overwrite','on','gui','off'); 
 end
-%% Apply filters
+
+%% Step 2: Apply filters
 if idx <= 2
 if idx == 2
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'.set'));
@@ -83,7 +89,8 @@ EEG = eeg_checkset(EEG);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_highpass'),...
     'savenew',strcat(fileDir,filesep,name,'_highpass'),'overwrite','on','gui','off');
 end
-%% Epoch events
+
+%% Step 3: Epoch data
 if idx <= 3
 if idx == 3
 EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_highpass.set'));
@@ -105,7 +112,7 @@ end
 EEG = eeg_checkset(EEG);
 
 end
-%% Use channels stats to reject bad channels 
+%% Step 4: Reject bad channels
 if idx <= 4
 if idx == 4
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_epochs.set'));
@@ -193,12 +200,14 @@ EEG = eeg_checkset(EEG);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_rejchans'),...
     'savenew',strcat(fileDir,filesep,name,'_rejchans'),'overwrite','on','gui','off'); 
 end
-%% Get number of channels before interpolation
+%% Step 5: Interpolate the removed channels
 if idx <= 5
 if idx == 5
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_rejchans.set'));
     originalEEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_autoreject.set'));
 end
+
+% Get number of channels before interpolation
 numChannelsBeforeInterp = EEG.nbchan;
 save(strcat(fileDir,filesep,'numChannelsBeforeInterp.mat'),'numChannelsBeforeInterp');
 
@@ -209,7 +218,7 @@ interpChans = {originalEEG.chanlocs(interpIdx).labels};
 interpTbl = table(find(interpIdx)',interpChans','VariableNames',{'ChannelIdx','ChannelName'});
 writetable(interpTbl,strcat(fileDir,filesep,name,'_interp.txt'))
 
-%% Interpolate channels
+% Interpolate channels
 
 EEG = pop_interp(EEG, originalEEG.chanlocs, 'spherical');
 EEG.comments = pop_comments(EEG.comments,'',['Interpolated channels ' strjoin(interpChans,', ')],1);
@@ -217,7 +226,7 @@ EEG.comments = pop_comments(EEG.comments,'',['Interpolated channels ' strjoin(in
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_interp'),...
     'savenew',strcat(fileDir,filesep,name,'_interp'),'overwrite','on','gui','off'); 
 end
-%% Change reference to average
+%% Step 6: Re-reference to average
 if idx <= 6
 if idx == 6
 EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_interp','.set'));
@@ -231,7 +240,7 @@ EEG.comments = pop_comments(EEG.comments,'','Changed to average reference',1);
     'savenew',strcat(fileDir,filesep,name,'_averef'),'overwrite','on','gui','off'); 
 EEG = eeg_checkset(EEG);
 end
-%% Reject bad epochs
+%% Step 7: Reject bad epochs
 if idx <= 7
 if idx == 7
 EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_averef.set'));
@@ -239,7 +248,7 @@ end
 
 events1 = [EEG.event(:).urevent];
 
-% reject epochs based on channel stats
+% Reject epochs based on channel stats
 pop_rejmenu(EEG,1)
 
 f = figure('menubar','none') ;
@@ -258,7 +267,7 @@ EEG.comments = pop_comments(EEG.comments,'',...
     'savenew',strcat(fileDir,filesep,name,'_epochs_rejected'),'overwrite','on','gui','off'); 
 EEG = eeg_checkset(EEG);
 end
-%% ICA
+%% Step 8: Run independent component analysis
 if idx <= 8
 if idx == 8
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_epochs_rejected.set'));
@@ -273,7 +282,7 @@ EEG.comments = pop_comments(EEG.comments,'','Performed ICA',1);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_ica'),...
     'savenew',strcat(fileDir,filesep,name,'_ica'),'overwrite','on','gui','off'); 
 end
-%% Reject components by map
+%% Step 9: Reject bad components
 if idx <= 9
 if idx == 9
 EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_ica.set'));
