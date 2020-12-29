@@ -120,6 +120,7 @@ if idx == 4
     originalEEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_highpass.set'));
 end
 numChannelsBeforeInterp = EEG.nbchan;
+load(strcat(fileDir,filesep,'numChannelsBeforeInterp.mat'));
 
 chans1 = {originalEEG.chanlocs.labels};
 chans2 = {EEG.chanlocs.labels};
@@ -177,6 +178,7 @@ if idx == 7
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_epochs.set'));
 end
 
+load(strcat(fileDir,filesep,'numChannelsBeforeInterp.mat'));
 EEG = pop_runica(EEG, 'icatype', 'runica', 'extended',1,'interrupt','on','pca',numChannelsBeforeInterp-1);
 EEG = eeg_checkset(EEG, 'ica');
 
@@ -191,24 +193,32 @@ if idx == 8
 EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_ica.set'));
 end
 EEG = pop_selectcomps(EEG, [1:size(EEG.icaweights,1)]);
-[ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
 
-export_fig(strcat(fileDir,filesep,name,'_icacomps'),'-png');
-uiwait
-
+load(strcat(fileDir,filesep,'numChannelsBeforeInterp.mat'));
+if numChannelsBeforeInterp-1 > 35
+    export_fig(strcat(fileDir,filesep,name,'_comps_36to',num2str(size(EEG.icaweights,1))),'-png');
+    uiwait
+    export_fig(strcat(fileDir,filesep,name,'_comps_1to35'),'-png');
+    uiwait
+else
+    uiwait
+    export_fig(strcat(fileDir,filesep,name,'_comps'),'-png');
+end
 rejectIdx = find(EEG.reject.gcompreject);
-EEG.comments = pop_comments(EEG.comments,'',strcat("Rejected independent components ", ...
-    strjoin(string(rejectIdx),', ')),1);
-EEG = pop_subcomp(EEG);
+
+if ~isempty(rejectIdx)
+    EEG.comments = pop_comments(EEG.comments,'',['Rejected independent components ', ...
+        strjoin(string(rejectIdx)),', '],1);
+    EEG = pop_subcomp(EEG);
+end
 
 writematrix(rejectIdx,strcat(fileDir,filesep,name,'_rejected_comps.txt'))
 
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_comps_rejected'),...
     'savenew',strcat(fileDir, filesep,name,'_comps_rejected'),'overwrite','on','gui','off'); 
 EEG = eeg_checkset(EEG);
-
-%% Save to all data folder
+%% Save as final version (to be easily retrieved for further analysis)
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat('final_',name),...
-    'savenew',strcat(dataDir,filesep,'final_',name),'overwrite','on','gui','off'); 
+    'savenew',strcat(fileDir,filesep,'final_',name),'overwrite','on','gui','off'); 
 EEG = eeg_checkset(EEG);
 end

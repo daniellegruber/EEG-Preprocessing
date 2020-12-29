@@ -200,6 +200,7 @@ if idx == 5
     originalEEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_autoreject.set'));
 end
 numChannelsBeforeInterp = EEG.nbchan;
+save(strcat(fileDir,filesep,'numChannelsBeforeInterp.mat'),'numChannelsBeforeInterp');
 
 chans1 = {originalEEG.chanlocs.labels};
 chans2 = {EEG.chanlocs.labels};
@@ -263,18 +264,12 @@ if idx == 8
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_epochs_rejected.set'));
 end
 
-% runamica15(EEG.data, 'num_chans', EEG.nbchan,...
-%     'outdir', '/Users/daniellegruber/Documents/MATLAB/ControlCircuits/Jolien/amicaresults',...
-%     'num_models', 1, 'pcakepp',numChannelsBeforeInterp,...
-%     'do_reject', 1, 'numrej', 15, 'rejsig', 3, 'rejint', 1);
-%  
-% EEG.etc.amica  = loadmodout15('/Users/daniellegruber/Documents/MATLAB/ControlCircuits/Jolien/amicaresults');
-% EEG.etc.amica.S = EEG.etc.amica.S(1:EEG.etc.amica.num_pcs, :); % Weirdly, I saw size(S,1) be larger than rank. This process does not hurt anyway.
-% EEG.icaweights = EEG.etc.amica.W;
-% EEG.icasphere  = EEG.etc.amica.S;
+load(strcat(fileDir,filesep,'numChannelsBeforeInterp.mat'));
 EEG = pop_runica(EEG, 'icatype', 'runica', 'extended',1,'interrupt','on','pca',numChannelsBeforeInterp-1);
-EEG.comments = pop_comments(EEG.comments,'','Performed ICA for bad component rejection',1);
 EEG = eeg_checkset(EEG, 'ica');
+
+EEG.comments = pop_comments(EEG.comments,'','Performed ICA',1);
+
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_ica'),...
     'savenew',strcat(fileDir,filesep,name,'_ica'),'overwrite','on','gui','off'); 
 end
@@ -284,13 +279,24 @@ if idx == 9
 EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_ica.set'));
 end
 EEG = pop_selectcomps(EEG, [1:size(EEG.icaweights,1)]);
-[ALLEEG EEG] = eeg_store(ALLEEG, EEG, CURRENTSET);
-uiwait
-uiwait
+
+load(strcat(fileDir,filesep,'numChannelsBeforeInterp.mat'));
+if numChannelsBeforeInterp-1 > 35
+    export_fig(strcat(fileDir,filesep,name,'_comps_36to',num2str(size(EEG.icaweights,1))),'-png');
+    uiwait
+    export_fig(strcat(fileDir,filesep,name,'_comps_1to35'),'-png');
+    uiwait
+else
+    export_fig(strcat(fileDir,filesep,name,'_comps'),'-png');
+    uiwait
+end
 rejectIdx = find(EEG.reject.gcompreject);
-EEG.comments = pop_comments(EEG.comments,'',['Rejected independent components ', ...
-    strjoin(string(rejectIdx)),', '],1);
-EEG = pop_subcomp(EEG);
+
+if ~isempty(rejectIdx)
+    EEG.comments = pop_comments(EEG.comments,'',['Rejected independent components ', ...
+        strjoin(string(rejectIdx)),', '],1);
+    EEG = pop_subcomp(EEG);
+end
 
 writematrix(rejectIdx,strcat(fileDir,filesep,name,'_rejected_comps.txt'))
 
@@ -299,6 +305,6 @@ writematrix(rejectIdx,strcat(fileDir,filesep,name,'_rejected_comps.txt'))
 EEG = eeg_checkset(EEG);
 %% Save as final version (to be easily retrieved for further analysis)
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat('final_',name),...
-    'savenew',strcat(filedir,filesep,'final_',name),'overwrite','on','gui','off'); 
+    'savenew',strcat(fileDir,filesep,'final_',name),'overwrite','on','gui','off'); 
 EEG = eeg_checkset(EEG);
 end
