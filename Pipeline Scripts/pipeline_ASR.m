@@ -22,6 +22,7 @@ else
     eeglabDir = uigetdir(path,'Select eeglab directory.');
     addpath(eeglabDir)
     eeglab
+    close all
     
     disp('Please specify data directory (where folders are created).')
     dataDir = uigetdir(path,'Select file directory.');
@@ -43,10 +44,10 @@ end
 pop_editoptions('option_single', 0);
 
 close all
-%% Load bdf file
+%% Load EEG data file
 if idx == 1
 disp('Please specify .set file from which you want to load data.')
-[dataFile,dataFilePath] = uigetfile('*.set','Select bdf file.');
+[dataFile,dataFilePath] = uigetfile('*.set','Select EEG data file.');
 EEG = pop_loadset('filename',strcat(dataFilePath,filesep,dataFile));
 
 EEG.pipeline = mfilename;
@@ -69,10 +70,10 @@ if idx == 2
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'.set'));
 end
 %EEG = pop_eegfiltnew(EEG, 1, 0, 1650, 0, [], 0);
-EEG = pop_eegfiltnew(EEG, 'locutoff',0.1,'plotfreqz',1);
+EEG = pop_eegfiltnew(EEG, 'locutoff',1,'plotfreqz',1);
 EEG = pop_eegfiltnew(EEG, 'hicutoff',30,'plotfreqz',1);
 
-EEG.comments = pop_comments(EEG.comments,'','Filters applied, locutoff 0.1, hicutoff 30',1);
+EEG.comments = pop_comments(EEG.comments,'','Filters applied, locutoff 1, hicutoff 30',1);
 
 EEG = eeg_checkset(EEG);
 originalEEG = EEG;
@@ -85,9 +86,6 @@ if idx <= 3
 if idx == 3
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_highpass.set'));
 end
-
-% Remove eye channel
-EEG = pop_select( EEG, 'nochannel',{'EXG1'});
 
 originalEEG = EEG;
 flag = 0;
@@ -169,7 +167,7 @@ if idx == 7
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'_epochs.set'));
 end
 
-EEG = pop_runica(EEG, 'icatype', 'runica', 'extended',1,'interrupt','on','pca',numChannelsBeforeInterp);
+EEG = pop_runica(EEG, 'icatype', 'runica', 'extended',1,'interrupt','on','pca',numChannelsBeforeInterp-1);
 EEG = eeg_checkset(EEG, 'ica');
 
 EEG.comments = pop_comments(EEG.comments,'','Performed ICA',1);

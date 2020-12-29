@@ -1,0 +1,3 @@
+ChannelIdx,ChannelName
+1,FPz
+2,EOG1

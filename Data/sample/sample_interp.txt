@@ -1,3 +1,0 @@
-ChannelIdx,ChannelName
-2,EOG1
-15,T8
