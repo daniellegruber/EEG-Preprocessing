@@ -15,6 +15,8 @@ if strcmp(previousOpts,'Yes')
     addpath(workingDir,filesep,'altmany-export_fig-4703a84')
     addpath(dataDir)
     addpath(eeglabDir)
+    eeglab
+    close all
 else
     disp('Please specify working directory (where your pipeline scripts are stored).')
     workingDir = uigetdir(path,'Select working directory.');
@@ -51,6 +53,7 @@ end
 pop_editoptions('option_single', 0);
 
 close all
+
 %% Step 1: Load EEG data
 if idx == 1
 disp('Please specify .set file from which you want to load data.')
@@ -59,9 +62,11 @@ EEG = pop_loadset('filename',strcat(dataFilePath,filesep,dataFile));
 
 EEG.pipeline = mfilename;
 
-% Resample to 512 Hz
-EEG = pop_resample(EEG, 512);
-EEG = eeg_checkset(EEG);
+% Resample to 512 Hz if sample rate too high
+if EEG.srate >= 1024
+    EEG = pop_resample(EEG, 512);
+    EEG = eeg_checkset(EEG);
+end
 
 EEG.comments = pop_comments(EEG.comments,'','Resampled to 512 Hz',1);
 
@@ -79,7 +84,7 @@ if idx <= 2
 if idx == 2
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'.set'));
 end
-%EEG = pop_eegfiltnew(EEG, 1, 0, 1650, 0, [], 0);
+
 EEG = pop_eegfiltnew(EEG, 'locutoff',1,'plotfreqz',1);
 EEG = pop_eegfiltnew(EEG, 'hicutoff',30,'plotfreqz',1);
 
@@ -112,6 +117,7 @@ end
 EEG = eeg_checkset(EEG);
 
 end
+
 %% Step 4: Reject bad channels
 if idx <= 4
 if idx == 4
@@ -200,6 +206,7 @@ EEG = eeg_checkset(EEG);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_rejchans'),...
     'savenew',strcat(fileDir,filesep,name,'_rejchans'),'overwrite','on','gui','off'); 
 end
+
 %% Step 5: Interpolate the removed channels
 if idx <= 5
 if idx == 5
@@ -219,7 +226,6 @@ interpTbl = table(find(interpIdx)',interpChans','VariableNames',{'ChannelIdx','C
 writetable(interpTbl,strcat(fileDir,filesep,name,'_interp.txt'))
 
 % Interpolate channels
-
 EEG = pop_interp(EEG, originalEEG.chanlocs, 'spherical');
 EEG.comments = pop_comments(EEG.comments,'',['Interpolated channels ' strjoin(interpChans,', ')],1);
 
@@ -240,6 +246,7 @@ EEG.comments = pop_comments(EEG.comments,'','Changed to average reference',1);
     'savenew',strcat(fileDir,filesep,name,'_averef'),'overwrite','on','gui','off'); 
 EEG = eeg_checkset(EEG);
 end
+
 %% Step 7: Reject bad epochs
 if idx <= 7
 if idx == 7
@@ -267,6 +274,7 @@ EEG.comments = pop_comments(EEG.comments,'',...
     'savenew',strcat(fileDir,filesep,name,'_epochs_rejected'),'overwrite','on','gui','off'); 
 EEG = eeg_checkset(EEG);
 end
+
 %% Step 8: Run independent component analysis
 if idx <= 8
 if idx == 8
@@ -282,6 +290,7 @@ EEG.comments = pop_comments(EEG.comments,'','Performed ICA',1);
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_ica'),...
     'savenew',strcat(fileDir,filesep,name,'_ica'),'overwrite','on','gui','off'); 
 end
+
 %% Step 9: Reject bad components
 if idx <= 9
 if idx == 9
@@ -312,6 +321,7 @@ writematrix(rejectIdx,strcat(fileDir,filesep,name,'_rejected_comps.txt'))
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_comps_rejected'),...
     'savenew',strcat(fileDir, filesep,name,'_comps_rejected'),'overwrite','on','gui','off'); 
 EEG = eeg_checkset(EEG);
+
 %% Save as final version (to be easily retrieved for further analysis)
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat('final_',name),...
     'savenew',strcat(fileDir,filesep,'final_',name),'overwrite','on','gui','off'); 

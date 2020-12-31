@@ -141,7 +141,6 @@ if isfield(EEG.etc, 'clean_sample_mask')
     disp('EEG.etc.clean_sample_mask present: Deleted.')
 end
 
-save( '/Users/daniellegruber/Documents/MATLAB/ControlCircuits/cleanrawdata_options.mat','options')
 cleanEEG = clean_artifacts(EEG, options{:});
                             
 % Apply Christian's function before and after comparison visualization.

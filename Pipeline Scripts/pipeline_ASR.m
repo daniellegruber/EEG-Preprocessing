@@ -15,6 +15,8 @@ if strcmp(previousOpts,'Yes')
     addpath(workingDir,filesep,'altmany-export_fig-4703a84')
     addpath(dataDir)
     addpath(eeglabDir)
+    eeglab
+    close all
 else
     disp('Please specify working directory (where your pipeline scripts are stored).')
     workingDir = uigetdir(path,'Select working directory.');
@@ -59,9 +61,11 @@ EEG = pop_loadset('filename',strcat(dataFilePath,filesep,dataFile));
 
 EEG.pipeline = mfilename;
 
-% Resample to 512 Hz
-EEG = pop_resample(EEG, 512);
-EEG = eeg_checkset(EEG);
+% Resample to 512 Hz if sample rate too high
+if EEG.srate >= 1024
+    EEG = pop_resample(EEG, 512);
+    EEG = eeg_checkset(EEG);
+end
 
 EEG.comments = pop_comments(EEG.comments,'','Resampled to 512 Hz',1);
 
@@ -79,7 +83,7 @@ if idx <= 2
 if idx == 2
     EEG = pop_loadset('filename',strcat(fileDir,filesep,name,'.set'));
 end
-%EEG = pop_eegfiltnew(EEG, 1, 0, 1650, 0, [], 0);
+
 EEG = pop_eegfiltnew(EEG, 'locutoff',1,'plotfreqz',1);
 EEG = pop_eegfiltnew(EEG, 'hicutoff',30,'plotfreqz',1);
 
@@ -91,6 +95,7 @@ originalEEG = EEG;
 [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',strcat(name,'_highpass'),...
     'savenew',strcat(fileDir,filesep,name,'_highpass'),'overwrite','on','gui','off');
 end
+
 %% Step 3: Reject bad channels
 if idx <= 3
 if idx == 3
@@ -233,11 +238,9 @@ while flag == 0
 
     disp('Remember to deselect bad channel rejection in the cleanrawdata window!')
     EEG = pop_clean_rawdata(originalEEG);
-    pop_eegplot(EEG)
 
     disp(['The number of non-boundary events after cleaning is ', ...
         num2str(sum(cellfun(@(x) ~strcmp(x,'boundary'),{EEG.event(:).type})))]);
-    uiwait()
     uiwait()
 
     redo = questdlg('Would you like to run cleanrawdata again?');
@@ -302,8 +305,8 @@ if numChannelsBeforeInterp-1 > 35
     export_fig(strcat(fileDir,filesep,name,'_comps_1to35'),'-png');
     uiwait
 else
-    uiwait
     export_fig(strcat(fileDir,filesep,name,'_comps'),'-png');
+    uiwait
 end
 rejectIdx = find(EEG.reject.gcompreject);
 
